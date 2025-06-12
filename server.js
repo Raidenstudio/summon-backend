@@ -12,12 +12,16 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ['https://summon-ui.netlify.app', 'http://localhost:5173'],
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-  allowEIO3: true,
+    origin: [
+      'https://summon-backend-tf0z.onrender.com',
+      'https://summon-ui.netlify.app',     // if frontend is on Netlify
+      'http://localhost:5173'
+    ],
+    methods: ['GET','POST'],
+    credentials: true
+  }
 });
+
 
 const MONGO_URI = 'mongodb+srv://summon:summon@summon.xfhyrzj.mongodb.net/summon?retryWrites=true&w=majority';
 
