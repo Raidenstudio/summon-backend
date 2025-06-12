@@ -1,9 +1,9 @@
 const express = require('express');
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 const cors = require('cors');
+const Message = require('./models/Message');
 
 const app = express();
 app.use(cors());
@@ -12,49 +12,45 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: '*', // or set specifically to 'https://summon-ui.netlify.app'
+    origin: ['https://summon-ui.netlify.app', 'http://localhost:5173'],
     methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
+const MONGO_URI = 'mongodb+srv://summon:summon@summon.xfhyrzj.mongodb.net/summon?retryWrites=true&w=majority';
 
+mongoose.connect(MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log("✅ MongoDB Connected");
+}).catch(err => {
+  console.error("❌ MongoDB Error:", err);
+});
 
-const messagesFilePath = path.join(__dirname, 'messages.json');
+io.on('connection', async (socket) => {
+  console.log('✅ User connected:', socket.id);
 
-// Load messages from file or initialize empty array
-let messages = [];
-if (fs.existsSync(messagesFilePath)) {
-  try {
-    messages = JSON.parse(fs.readFileSync(messagesFilePath, 'utf-8'));
-  } catch (err) {
-    console.error('Failed to read messages.json:', err);
-    messages = [];
-  }
-}
+  const history = await Message.find().sort({ time: 1 });
+  socket.emit('chat_history', history);
 
-// Save messages to file
-function saveMessagesToFile() {
-  fs.writeFileSync(messagesFilePath, JSON.stringify(messages, null, 2));
-}
+  socket.on('send_message', async (data) => {
+    const msg = new Message({
+      text: data.text,
+      time: new Date(data.time),
+      sender: data.sender
+    });
+    await msg.save();
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // Send chat history
-  socket.emit('chat_history', messages);
-
-  // Handle new messages
-  socket.on('send_message', (data) => {
-    messages.push(data);
-    saveMessagesToFile();
-    io.emit('receive_message', data);
+    io.emit('receive_message', msg);
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    console.log('❌ User disconnected:', socket.id);
   });
 });
 
 server.listen(3001, () => {
-  console.log('Server running on http://localhost:3001');
+  console.log('🚀 Server running on http://localhost:3001');
 });
