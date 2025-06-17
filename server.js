@@ -1,59 +1,70 @@
 const express = require('express');
-const http = require('http');
+const http = require('http'); 
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const Message = require('./models/Message');
+const contractRoutes = require('./routes/contractRoutes');
+const path = require('path'); 
+
 
 const app = express();
 app.use(cors());
-
+// ✅ Needed to parse JSON requests
+app.use(express.json());
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
     origin: [
-      'https://summon-backend-tf0z.onrender.com',
-      'https://summon-ui.netlify.app',     // if frontend is on Netlify
-      'http://localhost:5173'
+      'https://summon-ui.netlify.app', // frontend live URL
+      'http://localhost:5173'          // local dev
     ],
-    methods: ['GET','POST'],
+    methods: ['GET', 'POST'],
     credentials: true
-  }
+  },
+  allowEIO3: true,
 });
 
+const MONGO_URI = 'mongodb+srv://summon:summon@summon.xfhyrzj.mongodb.net/summon';
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log("✅ MongoDB Connected");
+  })
+  .catch(err => {
+    console.error("❌ MongoDB Connection Error:", err);
+  });
 
-const MONGO_URI = 'mongodb+srv://summon:summon@summon.xfhyrzj.mongodb.net/summon?retryWrites=true&w=majority';
+mongoose.connection.on('error', err => {
+  console.error('❌ MongoDB Runtime Error:', err);
+});
+// for image
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-mongoose.connect(MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.error("❌ MongoDB Error:", err));
+// Health check
+app.get('/health', async (req, res) => {
+  const count = await Message.countDocuments();
+  res.json({ ok: true, count });
+});
+
+app.use("/api" , contractRoutes)
+
 
 io.on('connection', async (socket) => {
   console.log('✅ User connected:', socket.id);
 
-  try {
-    const history = await Message.find().sort({ time: 1 });
-    socket.emit('chat_history', history);
-  } catch (err) {
-    console.error("Error fetching chat history:", err);
-  }
+  const history = await Message.find().sort({ time: 1 });
+  socket.emit('chat_history', history);
 
   socket.on('send_message', async (data) => {
     const msg = new Message({
       text: data.text,
       time: new Date(data.time),
-      sender: data.sender,
+      sender: data.sender
     });
+    await msg.save();
 
-    try {
-      await msg.save();
-      io.emit('receive_message', msg);
-    } catch (err) {
-      console.error("Error saving message:", err);
-    }
+    io.emit('receive_message', msg);
   });
 
   socket.on('disconnect', () => {
@@ -61,6 +72,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-server.listen(3001, () => {
-  console.log('🚀 Server running on http://localhost:3001');
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
