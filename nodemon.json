@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    "meme_launchpad/build",
+    "meme_launchpad/bytecode_modules",
+    "meme_launchpad/*.mv",
+    "**/*.mv",
+    "**/Move.toml",
+    "**/package-lock.json"
+  ]
+}

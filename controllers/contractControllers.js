@@ -24,24 +24,25 @@ async function resolveDependencies() {
 
 exports.createContract = async (req, res) => {
   try {
-    const { name, symbol, description, twitter, telegram, website, preBuy } =
-      req.body;
+    const {
+      name,
+      symbol,
+      description,
+      twitter,
+      telegram,
+      website,
+      preBuy,
+      walletAddress, // frontend user address from @suiet/wallet-kit
+    } = req.body;
 
     const decimals = 9;
     const maxSupply = 1000000000;
 
-    // ✅ Get uploaded icon URL from multer file
     const iconUrl = req.file
-      ? `http://localhost:3001/uploads/${req.file.filename}`
+      ? `https://summon-backend-tf0z.onrender.com/uploads/${req.file.filename}`
       : null;
 
-    // Check required fields
-    if (!name || !symbol || !description || !iconUrl) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // ✅ Validate required fields
-    if (!name || !symbol || !description || !decimals || !maxSupply) {
+    if (!name || !symbol || !description || !iconUrl || !walletAddress) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -51,6 +52,7 @@ exports.createContract = async (req, res) => {
     );
     let code = fs.readFileSync(contractPath, "utf8");
 
+    // 🔁 Replace placeholders in .move file
     code = code.replace(/DECIMALS: u8 = \d+;/, `DECIMALS: u8 = ${decimals};`);
     code = code.replace(
       /ICON_URL: vector<u8> = b".*";/,
@@ -74,22 +76,31 @@ exports.createContract = async (req, res) => {
     );
 
     fs.writeFileSync(contractPath, code);
-
     console.log("📦 Move contract updated.");
 
-    // ✅ Build
+    // ✅ Build command
     try {
-      execSync("echo Hello World", { stdio: "inherit", shell: true });
-      console.log("✅ Spawn test successful.");
+      execSync("sui move build --skip-fetch-latest-git-deps", {
+        cwd: path.join(__dirname, "../meme_launchpad"),
+        stdio: "inherit",
+        shell: true,
+      });
+      console.log("✅ Move contract built successfully.");
     } catch (err) {
-      console.error("❌ Test Failed:", err);
+      console.error("❌ Build Failed:", err);
+      return res.status(500).json({ error: "Build failed", details: err.message });
     }
 
-    // ✅ Deploy
+    const fetch = (await import("node-fetch")).default;
+
+    // 🔑 Load backend keypair
     const mnemonic =
       "gain sock symptom list dynamic enforce very peasant attend advance history people";
     const keypair = getSuiKeypairFromMnemonic(mnemonic);
-    const client = new SuiClient({ url: getFullnodeUrl("testnet") });
+    const client = new SuiClient({
+      url: getFullnodeUrl("testnet"),
+      fetch,
+    });
 
     const txb = new TransactionBlock();
     txb.setGasBudget(50_000_000);
@@ -97,7 +108,7 @@ exports.createContract = async (req, res) => {
     const bytecode = readFileSync(
       path.join(
         __dirname,
-        "../meme_launchpad/build/bytecode_modules/meme_token.mv"
+        "../meme_launchpad/build/meme_launchpad/bytecode_modules/meme_token.mv"
       ),
       "base64"
     );
@@ -110,11 +121,11 @@ exports.createContract = async (req, res) => {
     });
 
     txb.setSender(keypair.getPublicKey().toSuiAddress());
-    txb.transferObjects(
-      [upgradeCap],
-      txb.pure(keypair.getPublicKey().toSuiAddress())
-    );
 
+    // ✅ Transfer contract ownership to frontend wallet address
+    txb.transferObjects([upgradeCap], txb.pure(walletAddress));
+
+    // ✅ Execute the transaction
     const result = await client.signAndExecuteTransactionBlock({
       transactionBlock: await txb.build({ client }),
       signer: keypair,
@@ -132,11 +143,14 @@ exports.createContract = async (req, res) => {
       success: true,
       message: "Token deployed successfully!",
       packageId,
+      owner: walletAddress,
+      iconUrl,
     });
   } catch (error) {
     console.error("❌ Deployment Error:", error);
-    res
-      .status(500)
-      .json({ error: "Deployment failed", details: error.message });
+    res.status(500).json({
+      error: "Deployment failed",
+      details: error.message,
+    });
   }
 };
