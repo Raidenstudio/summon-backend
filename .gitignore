@@ -1,1 +1,12 @@
 .env
+
+# Ignore Sui build files
+sui/target
+sui/.idea
+sui/.vscode
+sui/.git
+sui/tmp
+sui/logs
+sui/build
+*.log
+*.tmp
