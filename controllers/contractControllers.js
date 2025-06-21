@@ -7,7 +7,7 @@ const { Ed25519Keypair } = require("@mysten/sui.js/keypairs/ed25519");
 const { readFileSync } = require("fs");
 const { SuiClient, getFullnodeUrl } = require("@mysten/sui.js/client");
 const { TransactionBlock } = require("@mysten/sui.js/transactions");
-const uploadToAzure = require("../utils/uploadAzure")
+const uploadToAzure = require("../utils/uploadToAzure")
 
 
 async function resolveDependencies() {
