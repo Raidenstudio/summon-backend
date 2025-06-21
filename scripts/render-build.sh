@@ -11,28 +11,47 @@ fi
 # Ensure cargo bin is in PATH
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Download Sui CLI prebuilt binary manually
-SUI_VERSION="0.36.1"
-SUI_ASSET="sui-${SUI_VERSION}-ubuntu-x86_64.tar.gz"
-SUI_URL="https://github.com/MystenLabs/sui/releases/download/${SUI_VERSION}/${SUI_ASSET}"
+# --------------------------
+# DOWNLOAD AND INSTALL SUI
+# --------------------------
 
-echo "Downloading Sui CLI $SUI_VERSION..."
-curl -L -o sui.tar.gz "$SUI_URL"
+# Pick a Sui release version
+SUI_VERSION="0.36.1"
+
+# Download release asset metadata from GitHub API
+ASSET_URL=$(curl -s "https://api.github.com/repos/MystenLabs/sui/releases/tags/${SUI_VERSION}" | \
+  grep "browser_download_url" | \
+  grep "ubuntu-x86_64.tar.gz" | \
+  cut -d '"' -f 4)
+
+if [ -z "$ASSET_URL" ]; then
+  echo "❌ Failed to find a valid .tar.gz for Sui CLI version $SUI_VERSION"
+  exit 1
+fi
+
+echo "✅ Downloading Sui CLI from: $ASSET_URL"
+curl -L "$ASSET_URL" -o sui.tar.gz
 
 # Extract and move binary to ~/.cargo/bin
 mkdir -p sui-cli
 tar -xzf sui.tar.gz -C sui-cli
-mv sui-cli/sui-${SUI_VERSION}-ubuntu-x86_64/sui $HOME/.cargo/bin/
+SUI_BINARY=$(find sui-cli -type f -name sui | head -n 1)
 
-# Ensure it's executable
+if [ ! -f "$SUI_BINARY" ]; then
+  echo "❌ Sui binary not found after extraction"
+  exit 1
+fi
+
+mv "$SUI_BINARY" $HOME/.cargo/bin/
 chmod +x $HOME/.cargo/bin/sui
 
-# Verify Sui CLI is installed
-echo "Sui CLI version:"
+# Check version
+echo "✅ Installed Sui CLI version:"
 sui --version
 
-# Navigate to Move package directory
-cd meme_launchpad
+# --------------------------
+# BUILD MOVE CONTRACT
+# --------------------------
 
-# Build the Move contract
+cd meme_launchpad
 sui move build --skip-fetch-latest-git-deps
