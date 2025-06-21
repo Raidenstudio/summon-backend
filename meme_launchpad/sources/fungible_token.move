@@ -17,11 +17,11 @@ module meme_launchpad::meme_token {
 
     // Maximum supply of the token
     const MAX_SUPPLY: u64 = 1000000000; // 100 million with decimal of 9
-    const ICON_URL: vector<u8> = b"http://localhost:3001/uploads/2025-06-19T04-32-37.317Z-2.png";
+    const ICON_URL: vector<u8> = b"https://raidenimage.blob.core.windows.net/raidenimg/2025-06-20T14-18-48.940Z-61c1d398bde7-article-main.jpg";
     const DECIMALS: u8 = 9;
-    const NAME: vector<u8> = b"Nowsath";
-    const SYMBOL: vector<u8> = b"now";
-    const DESCRIPTION: vector<u8> = b"As a leading Unity game development company, Raiden provides professional services in creating cross-platform games in immersive 2D/3D, AR/VR, and the Metaverse.";
+    const NAME: vector<u8> = b"TestDemo";
+    const SYMBOL: vector<u8> = b"TD";
+    const DESCRIPTION: vector<u8> = b"testing";
 
     const EEXCEEDS_SUPPLY: u64 = 0;
     const EINVALID_AMOUNT: u64 = 1;

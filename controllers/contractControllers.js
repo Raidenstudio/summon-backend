@@ -7,13 +7,8 @@ const { Ed25519Keypair } = require("@mysten/sui.js/keypairs/ed25519");
 const { readFileSync } = require("fs");
 const { SuiClient, getFullnodeUrl } = require("@mysten/sui.js/client");
 const { TransactionBlock } = require("@mysten/sui.js/transactions");
+const uploadToAzure = require("../utils/uploadAzure")
 
-function getSuiKeypairFromMnemonic(mnemonic, accountIndex = 0) {
-  const derivationPath = `m/44'/784'/${accountIndex}'/0'/0'`;
-  const seed = mnemonicToSeedSync(mnemonic);
-  const { key } = derivePath(derivationPath, seed.toString("hex"));
-  return Ed25519Keypair.fromSecretKey(key);
-}
 
 async function resolveDependencies() {
   return [
@@ -32,27 +27,26 @@ exports.createContract = async (req, res) => {
       telegram,
       website,
       preBuy,
-      walletAddress, // frontend user address from @suiet/wallet-kit
+      walletAddress, // This should be the user's wallet address
     } = req.body;
 
     const decimals = 9;
     const maxSupply = 1000000000;
 
-    const iconUrl = req.file
-      ? `https://summon-backend-tf0z.onrender.com/uploads/${req.file.filename}`
-      : null;
-
-    if (!name || !symbol || !description || !iconUrl || !walletAddress) {
-      return res.status(400).json({ error: "Missing required fields" });
+   let iconUrl = null;
+ 
+    if (req.file) {
+      iconUrl = await uploadToAzure(req.file);
     }
 
-    const contractPath = path.join(
-      __dirname,
-      "../meme_launchpad/sources/fungible_token.move"
-    );
-    let code = fs.readFileSync(contractPath, "utf8");
+    if (!name || !symbol || !description || !iconUrl || !walletAddress) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
 
-    // 🔁 Replace placeholders in .move file
+    // 1. Update the Move contract template
+    const contractPath = path.join(__dirname, '../meme_launchpad/sources/fungible_token.move');
+    let code = fs.readFileSync(contractPath, 'utf8');
+
     code = code.replace(/DECIMALS: u8 = \d+;/, `DECIMALS: u8 = ${decimals};`);
     code = code.replace(
       /ICON_URL: vector<u8> = b".*";/,
@@ -76,80 +70,56 @@ exports.createContract = async (req, res) => {
     );
 
     fs.writeFileSync(contractPath, code);
-    console.log("📦 Move contract updated.");
 
-    // ✅ Build command
+    // 2. Build the Move contract
     try {
-      execSync("sui move build --skip-fetch-latest-git-deps", {
-        cwd: path.join(__dirname, "../meme_launchpad"),
-        stdio: "inherit",
+      execSync('sui move build --skip-fetch-latest-git-deps', {
+        cwd: path.join(__dirname, '../meme_launchpad'),
+        stdio: 'inherit',
         shell: true,
       });
-      console.log("✅ Move contract built successfully.");
     } catch (err) {
-      console.error("❌ Build Failed:", err);
-      return res.status(500).json({ error: "Build failed", details: err.message });
+      console.error('Build failed:', err);
+      return res.status(500).json({ error: 'Build failed', details: err.message });
     }
 
-    const fetch = (await import("node-fetch")).default;
-
-    // 🔑 Load backend keypair
-    const mnemonic =
-      "gain sock symptom list dynamic enforce very peasant attend advance history people";
-    const keypair = getSuiKeypairFromMnemonic(mnemonic);
-    const client = new SuiClient({
-      url: getFullnodeUrl("testnet"),
-      fetch,
-    });
-
+    // 3. Prepare the transaction
     const txb = new TransactionBlock();
-    txb.setGasBudget(50_000_000);
+    txb.setGasBudget(100_000_000);
+    
+    // FIX: Set the sender address before building
+    txb.setSender(walletAddress);
 
-    const bytecode = readFileSync(
-      path.join(
-        __dirname,
-        "../meme_launchpad/build/meme_launchpad/bytecode_modules/meme_token.mv"
-      ),
-      "base64"
+    const bytecode = fs.readFileSync(
+      path.join(__dirname, '../meme_launchpad/build/meme_launchpad/bytecode_modules/meme_token.mv'),
+      'base64'
     );
 
     const dependencies = await resolveDependencies();
-
     const [upgradeCap] = txb.publish({
       modules: [bytecode],
       dependencies,
     });
 
-    txb.setSender(keypair.getPublicKey().toSuiAddress());
-
-    // ✅ Transfer contract ownership to frontend wallet address
+    // Transfer ownership to the user
     txb.transferObjects([upgradeCap], txb.pure(walletAddress));
 
-    // ✅ Execute the transaction
-    const result = await client.signAndExecuteTransactionBlock({
-      transactionBlock: await txb.build({ client }),
-      signer: keypair,
-      options: {
-        showEffects: true,
-        showObjectChanges: true,
-      },
-    });
+    // 4. Serialize the transaction for the frontend to sign
+    const client = new SuiClient({ url: getFullnodeUrl('testnet') });
 
-    const packageId = result.objectChanges?.find(
-      (change) => change.type === "published"
-    )?.packageId;
+res.json({
+  success: true,
+  bytecode,
+  dependencies,
+  walletAddress,
+  iconUrl,
+});
 
-    res.json({
-      success: true,
-      message: "Token deployed successfully!",
-      packageId,
-      owner: walletAddress,
-      iconUrl,
-    });
+
   } catch (error) {
-    console.error("❌ Deployment Error:", error);
+    console.error('Error:', error);
     res.status(500).json({
-      error: "Deployment failed",
+      error: 'Server error',
       details: error.message,
     });
   }
