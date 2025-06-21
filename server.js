@@ -38,8 +38,6 @@ mongoose.connect(MONGO_URI)
 mongoose.connection.on('error', err => {
   console.error('❌ MongoDB Runtime Error:', err);
 });
-// for image
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check
 app.get('/health', async (req, res) => {
