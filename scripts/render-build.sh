@@ -10,27 +10,32 @@ fi
 
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Install required native packages
+# Install dependencies
 apt-get update && apt-get install -y \
   git libssl-dev pkg-config clang cmake unzip build-essential \
   llvm-dev libclang-dev clang
 
-# Fix for bindgen — set libclang path
-export LIBCLANG_PATH="/usr/lib/llvm-14/lib"
+# Set correct LIBCLANG_PATH
+LIBCLANG_SO=$(find /usr/lib/llvm-* -name "libclang.so" | head -n 1)
+if [ -z "$LIBCLANG_SO" ]; then
+  echo "❌ libclang.so not found — install failed or wrong path."
+  exit 1
+fi
 
-# Clone Sui CLI
+export LIBCLANG_PATH=$(dirname "$LIBCLANG_SO")
+echo "✅ LIBCLANG_PATH set to: $LIBCLANG_PATH"
+
+# Clone Sui and build
 git clone https://github.com/MystenLabs/sui.git
 cd sui
-
-echo "✅ Building Sui CLI from source..."
 cargo build --release -p sui
 
-# Add to PATH
+# Move built binary
 cp target/release/sui $HOME/.cargo/bin/
 chmod +x $HOME/.cargo/bin/sui
 cd ..
 
-# Confirm version
+# Confirm
 sui --version
 
 # Build your Move contract
