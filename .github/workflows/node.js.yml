@@ -1,0 +1,42 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project (if build script exists)
+        run: npm run build --if-present
+
+      - name: Start or Restart backend with PM2
+        run: |
+          if pm2 list | grep -q "backend"; then
+            echo "Restarting existing PM2 process..."
+            sudo pm2 restart backend
+          else
+            echo "Starting new PM2 process..."
+            sudo pm2 start npm --name backend -- start
+          fi
+
+      - name: Save PM2 process list
+        run: |
+          sudo pm2 save
