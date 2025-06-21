@@ -33,8 +33,8 @@ exports.createContract = async (req, res) => {
     const decimals = 9;
     const maxSupply = 1000000000;
 
-   let iconUrl = null;
- 
+    let iconUrl = null;
+
     if (req.file) {
       iconUrl = await uploadToAzure(req.file);
     }
@@ -86,7 +86,7 @@ exports.createContract = async (req, res) => {
     // 3. Prepare the transaction
     const txb = new TransactionBlock();
     txb.setGasBudget(100_000_000);
-    
+
     // FIX: Set the sender address before building
     txb.setSender(walletAddress);
 
@@ -107,13 +107,13 @@ exports.createContract = async (req, res) => {
     // 4. Serialize the transaction for the frontend to sign
     const client = new SuiClient({ url: getFullnodeUrl('testnet') });
 
-res.json({
-  success: true,
-  bytecode,
-  dependencies,
-  walletAddress,
-  iconUrl,
-});
+    res.json({
+      success: true,
+      bytecode,
+      dependencies,
+      walletAddress,
+      iconUrl,
+    });
 
 
   } catch (error) {
@@ -124,3 +124,4 @@ res.json({
     });
   }
 };
+
