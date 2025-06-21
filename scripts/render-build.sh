@@ -2,7 +2,7 @@
 
 set -e
 
-# Install Rust
+# Install Rust if not installed
 if ! command -v rustc &> /dev/null; then
   curl https://sh.rustup.rs -sSf | sh -s -- -y
   source $HOME/.cargo/env
@@ -10,26 +10,25 @@ fi
 
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Install required tools
+# Install tools needed to build Sui
 apt-get update && apt-get install -y git libssl-dev pkg-config clang cmake unzip build-essential
 
-# Clone Sui repo and build from source
+# Clone the Sui repo and build from main (latest devnet)
 git clone https://github.com/MystenLabs/sui.git
 cd sui
-git checkout 1.51.0
 
-echo "✅ Building Sui CLI from source..."
+echo "✅ Building Sui CLI from source (main branch)..."
 cargo build --release -p sui
 
-# Move the binary to cargo bin
+# Move to usable path
 cp target/release/sui $HOME/.cargo/bin/
 chmod +x $HOME/.cargo/bin/sui
 cd ..
 
-# Check that it works
+# Check version
 echo "✅ Installed Sui CLI version:"
 sui --version
 
-# Build your Move contract
+# Build Move package
 cd meme_launchpad
 sui move build --skip-fetch-latest-git-deps
