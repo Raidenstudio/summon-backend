@@ -1,12 +1,12 @@
 require("dotenv").config();
 const express = require('express');
-const http = require('http'); 
+const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const Message = require('./models/Message');
 const contractRoutes = require('./routes/contractRoutes');
-const path = require('path'); 
+const path = require('path');
 
 
 const app = express();
@@ -49,7 +49,7 @@ app.get('/health', async (req, res) => {
   res.json({ ok: true, count });
 });
 
-app.use("/api" , contractRoutes)
+app.use("/api", contractRoutes)
 
 
 io.on('connection', async (socket) => {
@@ -74,7 +74,7 @@ io.on('connection', async (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 2083;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
