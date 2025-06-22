@@ -1,32 +1,46 @@
 require("dotenv").config();
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { Server } = require('socket.io');
 const Message = require('./models/Message');
 const contractRoutes = require('./routes/contractRoutes');
-const path = require('path');
 
 const app = express();
-const server = http.createServer(app);
 
-// ✅ Apply CORS before anything else
+// ✅ Read SSL certificates
+const options = {
+  key: fs.readFileSync(path.join(__dirname, 'cert/key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'cert/cert.pem')),
+};
+
+// ✅ Create HTTPS server
+const server = https.createServer(options, app);
+
+// ✅ CORS setup
 app.use(cors({
-  origin: (origin, callback) => {
-    callback(null, origin); // Allow all origins
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://summon-ui.netlify.app',
+      'http://localhost:5173',
+      'https://summon.raiden.in'
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  methods: ["GET", "POST"],
-  credentials: true
+  methods: ['GET', 'POST'],
+  credentials: true,
 }));
 
-// ✅ Needed to parse JSON body
-app.use(express.json());
+app.use(express.json()); // Parse JSON
 
-// ✅ Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// ✅ MongoDB Connect
+// ✅ MongoDB connection
 const MONGO_URI = 'mongodb+srv://summon:summon@summon.xfhyrzj.mongodb.net/summon';
 mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
@@ -36,25 +50,30 @@ mongoose.connection.on('error', err => {
   console.error('❌ MongoDB Runtime Error:', err);
 });
 
+// ✅ Static file handling
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // ✅ API Routes
 app.use("/api", contractRoutes);
 
-// ✅ Health Check
+// ✅ Health check
 app.get('/health', async (req, res) => {
   const count = await Message.countDocuments();
   res.json({ ok: true, count });
 });
 
-// ✅ Socket.IO Setup
+// ✅ socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      callback(null, origin);
-    },
+    origin: [
+      'https://summon-ui.netlify.app',
+      'http://localhost:5173',
+      'https://9199-172-178-82-104.ngrok-free.app'
+    ],
     methods: ['GET', 'POST'],
     credentials: true
   },
-  allowEIO3: true
+  allowEIO3: true,
 });
 
 io.on('connection', async (socket) => {
@@ -70,6 +89,7 @@ io.on('connection', async (socket) => {
       sender: data.sender
     });
     await msg.save();
+
     io.emit('receive_message', msg);
   });
 
@@ -78,8 +98,8 @@ io.on('connection', async (socket) => {
   });
 });
 
-// ✅ Start Server
+// ✅ Start HTTPS server
 const PORT = 2083;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 HTTPS Server running on https://localhost:${PORT}`);
 });
