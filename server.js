@@ -68,7 +68,7 @@ const io = new Server(server, {
     origin: [
       'https://summon-ui.netlify.app',
       'http://localhost:5173',
-      'https://9199-172-178-82-104.ngrok-free.app'
+      'https://summon.raiden.in'
     ],
     methods: ['GET', 'POST'],
     credentials: true
