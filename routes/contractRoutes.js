@@ -6,6 +6,8 @@ const upload = require("../utils/fileUpload");
 //create item
 
 router.post("/contract", upload.single("icon"), contractController.createCoin);
-// router.post("/bonding-curve", upload.single("icon"), bondingCurve);
+router.post("/store-coin", upload.single("icon"), contractController.storeCoin);
+router.get("/get-all-coin", contractController.getAllCoins);
+router.get("/get-single-coin/:id", contractController.getCoinById);
 
 module.exports = router;
