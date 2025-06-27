@@ -5,7 +5,7 @@ compiled_package_info:
     meme_launchpad: "0000000000000000000000000000000000000000000000000000000000000000"
     std: "0000000000000000000000000000000000000000000000000000000000000001"
     sui: "0000000000000000000000000000000000000000000000000000000000000002"
-  source_digest: C9C8AC0F037F27CA458CD898F32D2CC3B1B6146B5F2B030C7F7EFDC7E54C4CBF
+  source_digest: 8F3842AEEDA37DEA67A27DB88954F4650192932261E50BE2E72807F9E23B85AC
   build_flags:
     dev_mode: false
     test_mode: false
@@ -26,7 +26,6 @@ compiled_package_info:
     lint_flag:
       no_lint: false
       lint: false
-    modes: []
     implicit_dependencies:
       Bridge:
         Internal:

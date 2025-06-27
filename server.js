@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require('express');
 const https = require('https');
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -18,7 +19,9 @@ const options = {
 };
 
 // ✅ Create HTTPS server
-const server = https.createServer(options, app);
+// const server = https.createServer(options, app);
+
+const server = http.createServer(app);
 
 // ✅ CORS setup
 app.use(cors({
