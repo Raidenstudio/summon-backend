@@ -157,7 +157,7 @@ exports.getAllCoins = async (req, res) => {
 exports.getCoinById = async (req, res) => {
   try {
     const { id } = req.params;
-    const coin = await Coin.findById({ _id: id });
+    const coin = await Coin.findById(id);
 
     if (!coin) {
       return res.status(404).json({ success: false, error: "Coin not found" });
