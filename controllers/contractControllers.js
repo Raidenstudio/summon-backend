@@ -143,7 +143,7 @@ exports.storeCoin = async (req, res) => {
       !txDigest
     ) {
       return res.status(400).json({ error: "Missing required fields" });
-    }  
+    }
 
     // Save to database or mock save
     const coinData = {
@@ -215,22 +215,24 @@ exports.createTransaction = async (req, res) => {
       sellQuantity,
       minReceived,
       pathId,
+      coinImage
     } = req.body;
 
     console.log("req", req.body);
-    
+
     if (
       !coinName ||
       !coinSymbol ||
       !bondingCurveId ||
       !transactionDigest ||
-      !minReceived || 
+      !minReceived ||
       !pathId ||
       !address ||
-      !packageId 
+      !packageId ||
+      !coinImage
     ) {
       return res.status(400).json({ error: "Missing required fields" });
-    }  
+    }
 
     // Save to database or mock save
     const transactionData = {
@@ -244,6 +246,7 @@ exports.createTransaction = async (req, res) => {
       sellQuantity,
       minReceived,
       pathId,
+      coinImage
     };
 
     // Example DB save
@@ -262,7 +265,7 @@ exports.createTransaction = async (req, res) => {
 
 exports.getAllTransaction = async (req, res) => {
   try {
-    const transaction = await Transaction.find().sort({ createdAt: -1 }); 
+    const transaction = await Transaction.find().sort({ createdAt: -1 });
     res.json({ success: true, transaction });
   } catch (error) {
     console.error("transactionData error:", error);
