@@ -5,7 +5,7 @@ compiled_package_info:
     meme_launchpad: "0000000000000000000000000000000000000000000000000000000000000000"
     std: "0000000000000000000000000000000000000000000000000000000000000001"
     sui: "0000000000000000000000000000000000000000000000000000000000000002"
-  source_digest: 8FBCD08D4DB397E8BBE9FE1F37CFE22EFED33B924490F861C741BC6E2A331786
+  source_digest: ECA1BCC5ABFDA13809C30B0B777DF256253D30C7E42C0D35163667BDCB684543
   build_flags:
     dev_mode: false
     test_mode: false
@@ -15,7 +15,7 @@ compiled_package_info:
     force_recompilation: false
     lock_file: ".\\Move.lock"
     fetch_deps_only: false
-    skip_fetch_latest_git_deps: false
+    skip_fetch_latest_git_deps: true
     default_flavor: sui
     default_edition: ~
     deps_as_root: false
@@ -26,6 +26,7 @@ compiled_package_info:
     lint_flag:
       no_lint: false
       lint: false
+    modes: []
     implicit_dependencies:
       Bridge:
         Internal:

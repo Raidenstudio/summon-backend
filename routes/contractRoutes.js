@@ -11,5 +11,6 @@ router.get("/get-all-coin", contractController.getAllCoins);
 router.get("/get-single-coin/:id", contractController.getCoinById);
 router.get("/get-all-transactions", contractController.getAllTransaction);
 router.post("/create-transaction", contractController.createTransaction);
+router.put("/update-coin/:id", contractController.updateSingleCoin);
 
 module.exports = router;

@@ -179,6 +179,9 @@ exports.storeCoin = async (req, res) => {
 exports.getAllCoins = async (req, res) => {
   try {
     const coins = await Coin.find().sort({ createdAt: -1 }); // latest first
+    global.io.emit("coin-updated", {
+      coins,
+    });
     res.json({ success: true, coins });
   } catch (error) {
     console.error("getAllCoins error:", error);
@@ -215,7 +218,7 @@ exports.createTransaction = async (req, res) => {
       sellQuantity,
       minReceived,
       pathId,
-      coinImage
+      coinImage,
     } = req.body;
 
     console.log("req", req.body);
@@ -246,7 +249,7 @@ exports.createTransaction = async (req, res) => {
       sellQuantity,
       minReceived,
       pathId,
-      coinImage
+      coinImage,
     };
 
     // Example DB save
@@ -265,10 +268,55 @@ exports.createTransaction = async (req, res) => {
 
 exports.getAllTransaction = async (req, res) => {
   try {
-    const transaction = await Transaction.find().sort({ createdAt: -1 });
+    const transaction = await Transaction.find()
+      .sort({ createdAt: -1 }) // newest first
+      .limit(20);              // only latest 20
+
+    global.io.emit("transaction-updated", {
+      transaction,
+    });
+
     res.json({ success: true, transaction });
   } catch (error) {
     console.error("transactionData error:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+
+exports.updateSingleCoin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      mcap,
+      volume24USD,
+      totalVolume,
+      mcapPercentage,
+      volumePercentage,
+      totalVolumePercentage,
+    } = req.body;
+
+    const coin = await Coin.findById(id);
+    if (!coin) {
+      return res.status(404).json({ success: false, error: "Coin not found" });
+    }
+
+    // Update fields if they are present
+    if (mcap !== undefined) coin.mcap = mcap;
+    if (volume24USD !== undefined) coin.volume24USD = volume24USD;
+    if (totalVolume !== undefined) coin.totalVolume = totalVolume;
+    if (mcapPercentage !== undefined) coin.mcapPercentage = mcapPercentage;
+    if (volumePercentage !== undefined)
+      coin.volumePercentage = volumePercentage;
+    if (totalVolumePercentage !== undefined)
+      coin.totalVolumePercentage = totalVolumePercentage;
+
+    await coin.save();
+
+    res.json({ success: true, updated: coin });
+  } catch (error) {
+    console.error("updateSingleCoin error:", error);
     res.status(500).json({ success: false, error: "Server error" });
   }
 };

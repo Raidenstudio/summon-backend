@@ -17,11 +17,11 @@ module meme_launchpad::meme_token {
 
     // Maximum supply of the token
     const MAX_SUPPLY: u64 = 1000000000; // 100 million with decimal of 9
-    const ICON_URL: vector<u8> = b"https://raidenimage.blob.core.windows.net/raidenimg/2025-06-27T10-36-26.646Z-WhatsApp%20Image%202025-06-27%20at%2016.05.05_fa6ff0af.jpg";
+    const ICON_URL: vector<u8> = b"https://raidenimage.blob.core.windows.net/raidenimg/2025-07-08T10-14-26.867Z-Rectangle%204%20(11).png";
     const DECIMALS: u8 = 9;
-    const NAME: vector<u8> = b"Itachi Coin";
-    const SYMBOL: vector<u8> = b"IC";
-    const DESCRIPTION: vector<u8> = b"Itachi Coin";
+    const NAME: vector<u8> = b"Haritha2";
+    const SYMBOL: vector<u8> = b"HAR";
+    const DESCRIPTION: vector<u8> = b"Alien coin for tokens";
 
     const EEXCEEDS_SUPPLY: u64 = 0;
     const EINVALID_AMOUNT: u64 = 1;
