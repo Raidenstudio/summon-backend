@@ -79,7 +79,7 @@ const io = new Server(server, {
   allowEIO3: true,
 });
 
- global.io = io;
+global.io = io;
 
 io.on('connection', async (socket) => {
   console.log('✅ User connected:', socket.id);
