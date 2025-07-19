@@ -6,6 +6,7 @@ const { TransactionBlock } = require("@mysten/sui.js/transactions");
 const uploadToAzure = require("../utils/uploadToAzure");
 const Coin = require("../models/Coin");
 const Transaction = require("../models/Transaction");
+const Profile = require("../models/Profile");
 
 async function resolveDependencies() {
   return [
@@ -318,5 +319,58 @@ exports.updateSingleCoin = async (req, res) => {
   } catch (error) {
     console.error("updateSingleCoin error:", error);
     res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { walletAddress, profileName } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: "walletAddress is required" });
+    }
+
+    let profileImageUrl = null;
+
+    if (req.file) {
+      profileImageUrl = await uploadToAzure(req.file);
+    }
+
+    const updatedProfile = await Profile.findOneAndUpdate(
+      { walletAddress },
+      {
+        $set: {
+          ...(profileName && { profileName }),
+          ...(profileImageUrl && { profileImageUrl }),
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, data: updatedProfile });
+  } catch (error) {
+    console.error("updateProfile error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
+  }
+};
+
+exports.createProfile = async (req, res) => {
+  try {
+    const { walletAddress } = req.query;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: "walletAddress is required" });
+    }
+
+    const profile = await Profile.findOne({ walletAddress });
+
+    if (!profile) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    res.json({ success: true, data: profile });
+  } catch (error) {
+    console.error("getProfile error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 };
