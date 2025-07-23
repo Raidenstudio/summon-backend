@@ -7,6 +7,7 @@ const uploadToAzure = require("../utils/uploadToAzure");
 const Coin = require("../models/Coin");
 const Transaction = require("../models/Transaction");
 const Profile = require("../models/Profile");
+const { AccessToken } = require("livekit-server-sdk");
 
 async function resolveDependencies() {
   return [
@@ -332,6 +333,8 @@ exports.updateProfile = async (req, res) => {
 
     let profileImageUrl = null;
 
+    console.log(req.file);
+    
     if (req.file) {
       profileImageUrl = await uploadToAzure(req.file);
     }
@@ -371,6 +374,29 @@ exports.createProfile = async (req, res) => {
     res.json({ success: true, data: profile });
   } catch (error) {
     console.error("getProfile error:", error);
+    res.status(500).json({ error: "Server error", details: error.message });
+  }
+};
+
+exports.checkProfileName = async (req, res) => {
+  try {
+    const { profileName, walletAddress } = req.query;
+
+    if (!profileName || !walletAddress) {
+      return res.status(400).json({ error: "profileName and walletAddress are required" });
+    }
+
+const profileWithSameName = await Profile.findOne({
+  profileName: { $regex: new RegExp(`^${profileName}$`, "i") },
+});
+
+    if (profileWithSameName && profileWithSameName.walletAddress !== walletAddress) {
+      return res.json({ exists: true });
+    }
+
+    return res.json({ exists: false });
+  } catch (error) {
+    console.error("checkProfileName error:", error);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };

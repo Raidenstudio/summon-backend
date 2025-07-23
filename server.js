@@ -9,7 +9,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const Message = require('./models/Message');
 const contractRoutes = require('./routes/contractRoutes');
-
+const streamRoutes = require("./routes/streamRoutes")
 const app = express();
 
 // ✅ Read SSL certificates
@@ -19,9 +19,9 @@ const options = {
 };
 
 // ✅ Create HTTPS server
-const server = https.createServer(options, app);
+// const server = https.createServer(options, app);
 
-// const server = http.createServer(app);
+const server = http.createServer(app);
 
 // ✅ CORS setup
 app.use(cors({
@@ -58,6 +58,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ API Routes
 app.use("/api", contractRoutes);
+app.use("/api", streamRoutes);
 
 // ✅ Health check
 app.get('/health', async (req, res) => {

@@ -14,5 +14,6 @@ router.post("/create-transaction", contractController.createTransaction);
 router.put("/update-coin/:id", contractController.updateSingleCoin);
 router.post("/update-profile", upload.single("profileImage"), contractController.updateProfile);
 router.get("/create-profile", contractController.createProfile);
+router.get("/check-profile-name", contractController.checkProfileName);
 
 module.exports = router;
