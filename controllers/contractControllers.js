@@ -325,16 +325,14 @@ exports.updateSingleCoin = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { walletAddress, profileName } = req.body;
-
+    const { walletAddress, profileName, emailId } = req.body;
+ console.log("Received data:", { walletAddress, profileName, emailId });
     if (!walletAddress) {
       return res.status(400).json({ error: "walletAddress is required" });
     }
 
     let profileImageUrl = null;
 
-    console.log(req.file);
-    
     if (req.file) {
       profileImageUrl = await uploadToAzure(req.file);
     }
@@ -344,18 +342,28 @@ exports.updateProfile = async (req, res) => {
       {
         $set: {
           ...(profileName && { profileName }),
+         ...(emailId !== undefined && { emailId }),
           ...(profileImageUrl && { profileImageUrl }),
         },
       },
       { upsert: true, new: true }
     );
-
-    res.json({ success: true, data: updatedProfile });
+  console.log("Updated profile:", updatedProfile);
+    res.json({ 
+      success: true, 
+      data: {
+        profileName: updatedProfile.profileName,
+        profileImageUrl: updatedProfile.profileImageUrl,
+        emailId: updatedProfile.emailId,
+        walletAddress: updatedProfile.walletAddress
+      }
+    });
   } catch (error) {
     console.error("updateProfile error:", error);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
+
 
 exports.createProfile = async (req, res) => {
   try {
