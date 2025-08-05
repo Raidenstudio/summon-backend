@@ -15,5 +15,8 @@ router.put("/update-coin/:id", contractController.updateSingleCoin);
 router.post("/update-profile", upload.single("profileImage"), contractController.updateProfile);
 router.get("/create-profile", contractController.createProfile);
 router.get("/check-profile-name", contractController.checkProfileName);
+router.post("/add-to-watchlist", contractController.addToWatchlist);
+router.get("/get-watchlist", contractController.getWatchlist);
+router.post('/remove-from-watchlist', contractController.removeFromWatchlist);
 
 module.exports = router;

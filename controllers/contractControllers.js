@@ -8,6 +8,7 @@ const Coin = require("../models/Coin");
 const Transaction = require("../models/Transaction");
 const Profile = require("../models/Profile");
 const { AccessToken } = require("livekit-server-sdk");
+const Watchlist = require('../models/Watchlist');
 
 async function resolveDependencies() {
   return [
@@ -325,6 +326,8 @@ exports.updateProfile = async (req, res) => {
   try {
     const { walletAddress, profileName, emailId } = req.body;
     console.log("Received data:", { walletAddress, profileName, emailId });
+    const { walletAddress, profileName } = req.body;
+    console.log("Received data:", { walletAddress, profileName });
     if (!walletAddress) {
       return res.status(400).json({ error: "walletAddress is required" });
     }
@@ -352,7 +355,6 @@ exports.updateProfile = async (req, res) => {
       data: {
         profileName: updatedProfile.profileName,
         profileImageUrl: updatedProfile.profileImageUrl,
-        emailId: updatedProfile.emailId,
         walletAddress: updatedProfile.walletAddress
       }
     });
@@ -404,5 +406,58 @@ exports.checkProfileName = async (req, res) => {
   } catch (error) {
     console.error("checkProfileName error:", error);
     res.status(500).json({ error: "Server error", details: error.message });
+  }
+};
+
+exports.addToWatchlist = async (req, res) => {
+  try {
+    const { userId, coinId } = req.body;
+
+    const watchlist = await Watchlist.findOneAndUpdate(
+      { user: userId },
+      { $addToSet: { coins: coinId } },
+      { upsert: true, new: true }
+    ).populate('coins');
+
+    res.json({ success: true, watchlist });
+  } catch (error) {
+    console.error("Error adding to watchlist:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.removeFromWatchlist = async (req, res) => {
+  try {
+    const { userId, coinId } = req.body;
+
+    const watchlist = await Watchlist.findOneAndUpdate(
+      { user: userId },
+      { $pull: { coins: coinId } },
+      { new: true }
+    ).populate('coins');
+
+    res.json({ success: true, watchlist });
+  } catch (error) {
+    console.error("Error removing from watchlist:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.getWatchlist = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    const watchlist = await Watchlist.findOne({ user: userId })
+      .populate('coins')
+      .lean();
+
+    if (!watchlist) {
+      return res.json({ success: true, coins: [] });
+    }
+
+    res.json({ success: true, coins: watchlist.coins });
+  } catch (error) {
+    console.error("Error getting watchlist:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
