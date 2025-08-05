@@ -64,6 +64,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use("/api", contractRoutes);
 app.use("/api", streamRoutes);
 
+
 // Run bot every 60 seconds
 setInterval(handleMentions, 60000);
 
