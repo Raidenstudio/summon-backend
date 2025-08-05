@@ -10,7 +10,6 @@ const { Server } = require('socket.io');
 const Message = require('./models/Message');
 const contractRoutes = require('./routes/contractRoutes');
 const streamRoutes = require('./routes/streamRoutes');
-const streamRoutes = require("./routes/streamRoutes");
 const { handleMentions } = require("./controllers/twiiterController");
 const { createCoinLogic } = require("./controllers/createCoinLogic");
 const { generatePoster } = require("./utils/generatePoster");
