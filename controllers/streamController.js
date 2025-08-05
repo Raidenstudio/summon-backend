@@ -1,7 +1,8 @@
-const Stream = require("../models/Session");
-const { AccessToken } = require("livekit-server-sdk");
-const { v4: uuidv4 } = require("uuid");
+const Stream = require('../models/Session');
+const { AccessToken } = require('livekit-server-sdk');
 const { RoomServiceClient } = require('livekit-server-sdk');
+const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 
 const roomService = new RoomServiceClient(
   process.env.LIVEKIT_URL.replace('wss://', 'https://'),
@@ -9,94 +10,115 @@ const roomService = new RoomServiceClient(
   process.env.LIVEKIT_SECRET
 );
 
-const createStream = async (req, res) => {
+exports.createStream = async (req, res) => {
   try {
-    const { identity, title } = req.body;
-    
-    if (!identity || !title) {
-      return res.status(400).json({ error: "Identity and title are required" });
+    const { identity, title, coinId } = req.body;
+
+    if (!identity || !coinId) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Identity and coinId are required' 
+      });
     }
 
-    const room = `room-${uuidv4()}`;
-    
-    await roomService.createRoom({
-      name: room,
-      emptyTimeout: 10 * 60, 
-      maxParticipants: 100,
-    });
+    const roomName = `coin-${coinId}-${Date.now()}`;
 
-    const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_SECRET, {
-      identity,
-    });
-    at.addGrant({ 
-      roomJoin: true,
-      room,
-      canPublish: true,
-      canSubscribe: true,
-      canPublishData: true,
-      canUpdateMetadata: true
-    });
-    const token = at.toJwt();
+    try {
+      await roomService.createRoom({
+        name: roomName,
+        emptyTimeout: 10 * 60,
+        maxParticipants: 100,
+      });
+    } catch (roomError) {
+      console.error('LiveKit room creation failed:', roomError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create LiveKit room',
+        details: roomError.message
+      });
+    }
 
-    // Save to DB
-    const stream = await Stream.create({
-      title,
-      room,
+    const token = await generateLiveKitToken(identity, roomName);
+
+    const stream = new Stream({
+      title: title || `Stream for ${coinId}`,
+      room: roomName,
       hostIdentity: identity,
-      type: "livekit",
+      coin: coinId,
+      token, 
       isLive: true,
-      startedAt: new Date()
     });
+    
+    await stream.save();
 
-    return res.json({
+    res.json({
       success: true,
       streamId: stream._id,
       token,
-      room,
-      title,
-      livekitURL: process.env.LIVEKIT_URL
+      room: roomName,
+      title: stream.title,
+      coinId,
+      livekitURL: process.env.LIVEKIT_URL,
     });
 
-  } catch (err) {
-    console.error("Create Stream Error:", err);
-    return res.status(500).json({ 
+  } catch (error) {
+    console.error('Stream creation error:', error);
+    res.status(500).json({
       success: false,
-      error: "Failed to create stream",
-      details: err.message 
+      error: 'Failed to create stream',
+      details: error.message
     });
   }
 };
 
-const getStreamByRoom = async (req, res) => {
+async function generateLiveKitToken(identity, roomName) {
+  const at = new AccessToken(
+    process.env.LIVEKIT_API_KEY,
+    process.env.LIVEKIT_SECRET,
+    { identity }
+  );
+  at.addGrant({
+    roomJoin: true,
+    room: roomName,
+    canPublish: true,
+    canSubscribe: true,
+  });
+  return at.toJwt();
+}
+exports.getStreamByCoin = async (req, res) => {
   try {
-    const { roomName } = req.params;
+    const { coinId } = req.params;
+    
+    // Basic validation
+    if (!coinId) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Coin ID is required' 
+      });
+    }
+
+    // Find stream in database
     const stream = await Stream.findOne({ 
-      $or: [
-        { title: roomName },
-        { room: roomName }
-      ],
+      coin: coinId, 
       isLive: true 
-    });
+    }).sort({ startedAt: -1 });
 
     if (!stream) {
       return res.status(404).json({ 
         success: false,
-        error: "Stream not found or not live" 
+        error: 'No active stream found for this coin' 
       });
     }
 
-    const roomInfo = await roomService.listRooms([stream.room]);
-    const participantCount = roomInfo.length > 0 ? roomInfo[0].numParticipants : 0;
-
+    // Generate viewer token
     const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_SECRET, {
       identity: `viewer-${uuidv4()}`,
     });
-    at.addGrant({ 
+    at.addGrant({
       roomJoin: true,
       room: stream.room,
       canSubscribe: true,
       canPublish: false,
-      canPublishData: false
     });
     const token = at.toJwt();
 
@@ -108,33 +130,34 @@ const getStreamByRoom = async (req, res) => {
         room: stream.room,
         isLive: stream.isLive,
         startedAt: stream.startedAt,
-        participantCount,
-        hostIdentity: stream.hostIdentity
+        hostIdentity: stream.hostIdentity,
+        coin: stream.coin,
       },
       token,
-      livekitURL: process.env.LIVEKIT_URL
+      livekitURL: process.env.LIVEKIT_URL,
     });
 
-  } catch (err) {
-    console.error("Get Stream Error:", err);
+  } catch (error) {
+    console.error('Error in getStreamByCoin:', error);
     return res.status(500).json({ 
       success: false,
-      error: "Failed to get stream",
-      details: err.message 
+      error: 'Internal server error',
+      details: error.message 
     });
   }
 };
 
-const stopStream = async (req, res) => {
+exports.stopStream = async (req, res) => {
   try {
     const { streamId } = req.body;
+
     if (!streamId) {
-      return res.status(400).json({ error: "Stream ID is required" });
+      return res.status(400).json({ error: 'Stream ID is required' });
     }
 
     const stream = await Stream.findById(streamId);
     if (!stream) {
-      return res.status(404).json({ error: "Stream not found" });
+      return res.status(404).json({ error: 'Stream not found' });
     }
 
     await roomService.deleteRoom(stream.room);
@@ -143,38 +166,80 @@ const stopStream = async (req, res) => {
     stream.endedAt = new Date();
     await stream.save();
 
-    return res.json({ 
+    res.json({ 
       success: true,
-      message: "Stream stopped successfully" 
+      message: 'Stream stopped successfully',
+      stream,
     });
-
-  } catch (err) {
-    console.error("Stop Stream Error:", err);
-    return res.status(500).json({ 
-      success: false,
-      error: "Failed to stop stream",
-      details: err.message 
-    });
-  }
-};
-
-const getAllStreams = async (req, res) => {
-  try {
-    const streams = await Stream.find({ isLive: true });
-    res.json({ success: true, streams });
-  } catch (err) {
-    console.error("Get All Streams Error:", err);
+  } catch (error) {
+    console.error('Stop stream error:', error);
     res.status(500).json({ 
       success: false,
-      error: "Failed to get streams",
-      details: err.message 
+      error: 'Failed to stop stream',
+      details: error.message 
     });
   }
 };
 
-module.exports = {
-  createStream,
-  getStreamByRoom,
-  stopStream,
-  getAllStreams
+exports.getActiveStreams = async (req, res) => {
+  try {
+    const streams = await Stream.find({ isLive: true })
+      .sort({ startedAt: -1 })
+      .lean();
+
+    const roomNames = streams.map(s => s.room);
+    const roomInfos = await roomService.listRooms(roomNames);
+    
+    const streamsWithData = streams.map(stream => {
+      const roomInfo = roomInfos.find(r => r.name === stream.room);
+      return {
+        ...stream,
+        participantCount: roomInfo?.numParticipants || 0,
+        hostIdentity: stream.hostIdentity || 'Anonymous',
+      };
+    });
+
+    res.json({ 
+      success: true,
+      streams: streamsWithData 
+    });
+  } catch (error) {
+    console.error('Error getting active streams:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get active streams',
+      details: error.message 
+    });
+  }
+};
+
+exports.getStreamByRoom = async (req, res) => {
+  try {
+    const { room } = req.params;
+    console.debug('[DEBUG] Incoming room param:', room);
+    console.debug('[DEBUG] Mongoose DB connected:', mongoose.connection.readyState === 1);
+
+    const stream = await Stream.findOne({ room });
+    console.debug('[DEBUG] Stream found in DB:', stream);
+
+    if (!stream) {
+      return res.status(404).json({ error: 'Stream not found' });
+    }
+
+    // Just return LiveKit URL and room name — no token
+    const livekitUrl = process.env.LIVEKIT_URL;
+
+    return res.json({
+      url: livekitUrl,
+      room,
+      stream,
+    });
+
+  } catch (err) {
+    console.error('[FATAL] getStreamByRoom error:', {
+      message: err.message,
+      stack: err.stack,
+    });
+    return res.status(500).json({ error: 'Failed to fetch stream info' });
+  }
 };

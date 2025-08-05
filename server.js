@@ -9,7 +9,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const Message = require('./models/Message');
 const contractRoutes = require('./routes/contractRoutes');
-const streamRoutes = require("./routes/streamRoutes")
+const streamRoutes = require('./routes/streamRoutes');
 const app = express();
 
 // ✅ Read SSL certificates
@@ -58,8 +58,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ API Routes
 app.use("/api", contractRoutes);
-app.use("/api", streamRoutes);
-
+app.use('/api/streams', streamRoutes);
 // ✅ Health check
 app.get('/health', async (req, res) => {
   const count = await Message.countDocuments();

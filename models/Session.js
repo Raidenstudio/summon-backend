@@ -1,11 +1,48 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const streamSchema = new mongoose.Schema({
-  title: String,
-  room: String,
-  type: { type: String, enum: ["livekit", "youtube"], default: "livekit" },
-  isLive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
+const StreamSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  room: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  hostIdentity: {
+    type: String,
+    required: true,
+  },
+  coin: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Coin',
+    required: true,
+  },
+  token: {
+    type: String,
+    required: true,
+  },
+  isLive: {
+    type: Boolean,
+    default: true,
+  },
+  startedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  endedAt: {
+    type: Date,
+  },
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
 });
 
-module.exports = mongoose.model("Stream", streamSchema);
+// Index for faster queries
+StreamSchema.index({ coin: 1, isLive: 1 });
+StreamSchema.index({ isLive: 1 });
+
+module.exports = mongoose.model('Stream', StreamSchema);
