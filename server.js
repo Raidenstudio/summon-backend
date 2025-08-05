@@ -9,7 +9,11 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const Message = require('./models/Message');
 const contractRoutes = require('./routes/contractRoutes');
-const streamRoutes = require("./routes/streamRoutes")
+const streamRoutes = require("./routes/streamRoutes");
+const { handleMentions } = require("./controllers/twiiterController");
+const { createCoinLogic } = require("./controllers/createCoinLogic");
+const { generatePoster } = require("./utils/generatePoster");
+
 const app = express();
 
 // ✅ Read SSL certificates
@@ -59,6 +63,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ✅ API Routes
 app.use("/api", contractRoutes);
 app.use("/api", streamRoutes);
+
+// Run bot every 60 seconds
+setInterval(handleMentions, 60000);
 
 // ✅ Health check
 app.get('/health', async (req, res) => {

@@ -137,8 +137,6 @@ exports.storeCoin = async (req, res) => {
     if (
       !name ||
       !symbol ||
-      !description ||
-      !walletAddress ||
       !packageId ||
       !treasuryCap ||
       !bondingCurve ||
@@ -326,7 +324,7 @@ exports.updateSingleCoin = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { walletAddress, profileName, emailId } = req.body;
- console.log("Received data:", { walletAddress, profileName, emailId });
+    console.log("Received data:", { walletAddress, profileName, emailId });
     if (!walletAddress) {
       return res.status(400).json({ error: "walletAddress is required" });
     }
@@ -342,15 +340,15 @@ exports.updateProfile = async (req, res) => {
       {
         $set: {
           ...(profileName && { profileName }),
-         ...(emailId !== undefined && { emailId }),
+          ...(emailId !== undefined && { emailId }),
           ...(profileImageUrl && { profileImageUrl }),
         },
       },
       { upsert: true, new: true }
     );
-  console.log("Updated profile:", updatedProfile);
-    res.json({ 
-      success: true, 
+    console.log("Updated profile:", updatedProfile);
+    res.json({
+      success: true,
       data: {
         profileName: updatedProfile.profileName,
         profileImageUrl: updatedProfile.profileImageUrl,
@@ -394,9 +392,9 @@ exports.checkProfileName = async (req, res) => {
       return res.status(400).json({ error: "profileName and walletAddress are required" });
     }
 
-const profileWithSameName = await Profile.findOne({
-  profileName: { $regex: new RegExp(`^${profileName}$`, "i") },
-});
+    const profileWithSameName = await Profile.findOne({
+      profileName: { $regex: new RegExp(`^${profileName}$`, "i") },
+    });
 
     if (profileWithSameName && profileWithSameName.walletAddress !== walletAddress) {
       return res.json({ exists: true });
