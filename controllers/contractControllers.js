@@ -324,8 +324,6 @@ exports.updateSingleCoin = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { walletAddress, profileName, emailId } = req.body;
-    console.log("Received data:", { walletAddress, profileName, emailId });
     const { walletAddress, profileName } = req.body;
     console.log("Received data:", { walletAddress, profileName });
     if (!walletAddress) {
