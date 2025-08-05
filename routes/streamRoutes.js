@@ -1,10 +1,18 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const streamController = require("../controllers/streamController");
+const streamController = require('../controllers/streamController');
 
-router.post("/create-stream", streamController.createStream);
-router.get("/active-streams", streamController.getAllStreams); 
-router.get("/stream/:roomName", streamController.getStreamByRoom); 
-router.post("/stop-stream", streamController.stopStream);
+// Create a new stream
+router.post('/create', streamController.createStream);
+
+// Get stream by coin ID
+router.get('/coin/:coinId', streamController.getStreamByCoin);
+// Stop a stream
+router.post('/stop', streamController.stopStream);
+
+// Get all active streams
+router.get('/active', streamController.getActiveStreams);
+
+router.get('/room/:room', streamController.getStreamByRoom);
 
 module.exports = router;
