@@ -65,9 +65,8 @@ app.use("/api", contractRoutes);
 app.use('/api/streams', streamRoutes);
 app.use("/api", streamRoutes);
 
-
 // Run bot every 60 seconds
-setInterval(handleMentions, 60000);
+// setInterval(handleMentions, 60000);
 
 // ✅ Health check
 app.get('/health', async (req, res) => {

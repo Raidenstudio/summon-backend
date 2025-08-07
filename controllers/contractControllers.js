@@ -445,13 +445,24 @@ exports.getWatchlist = async (req, res) => {
   try {
     const { userId } = req.query;
 
+    console.log(req.query);
+
+
+    console.log("userId", userId);
+
+
     const watchlist = await Watchlist.findOne({ user: userId })
       .populate('coins')
       .lean();
 
+    console.log("watchlist.coins", watchlist);
+
     if (!watchlist) {
       return res.json({ success: true, coins: [] });
     }
+
+    console.log("watchlist.coins", watchlist);
+
 
     res.json({ success: true, coins: watchlist.coins });
   } catch (error) {

@@ -11,3 +11,4 @@ sui/logs
 sui/build
 *.log
 *.tmp
+node_modules

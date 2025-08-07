@@ -13,6 +13,6 @@ router.post('/stop', streamController.stopStream);
 // Get all active streams
 router.get('/active', streamController.getActiveStreams);
 
-router.get('/room/:room', streamController.getStreamByRoom);
+router.get('/:room', streamController.getStreamByRoom);
 
 module.exports = router;
