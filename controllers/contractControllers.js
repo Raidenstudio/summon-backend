@@ -271,7 +271,6 @@ exports.getAllTransaction = async (req, res) => {
   try {
     const transaction = await Transaction.find()
       .sort({ createdAt: -1 }) // newest first
-      .limit(20);              // only latest 20
 
     global.io.emit("transaction-updated", {
       transaction,
