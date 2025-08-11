@@ -171,6 +171,14 @@ async function handleMentions() {
                     iconUrl
                 });
 
+                await generatePoster({
+                    title: name.toUpperCase(),
+                    subtitle: `LETS ${ticker.toUpperCase()}`,
+                    launchInfo: "Launched via @SummonFun",
+                    buttonText: "BUY NOW",
+                    imageUrl: iconUrl
+                });
+
                 // Load the generated image
                 const imagePath = path.resolve(__dirname, '../poster_output.png');
                 const mediaData = fs.readFileSync(imagePath);

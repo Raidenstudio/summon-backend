@@ -1,5 +1,5 @@
 const Stream = require('../models/Session');
-const { AccessToken, RoomServiceClient } = require('livekit-server-sdk');
+const { EgressClient, AccessToken, RoomServiceClient } = require('livekit-server-sdk');
 const { v4: uuidv4 } = require('uuid');
 
 // Configuration - in production, use environment variables
@@ -295,6 +295,60 @@ exports.getStreamByRoom = async (req, res) => {
       success: false,
       error: 'Failed to fetch stream',
       details: err.message
+    });
+  }
+};
+
+
+exports.uploadThumbnail = async (req, res) => {
+  try {
+    const { streamId, hostAddress } = req.body;
+
+    // The file is now available in req.file.buffer
+    const thumbnailFile = req.file;
+
+    if (!streamId || !hostAddress || !thumbnailFile) {
+      return res.status(400).json({
+        success: false,
+        error: 'Stream ID, host address, and a thumbnail file are required'
+      });
+    }
+
+    const stream = await Stream.findById(streamId);
+    if (!stream) {
+      return res.status(404).json({
+        success: false,
+        error: 'Stream not found'
+      });
+    }
+
+    // Verify ownership
+    if (stream.hostAddress !== hostAddress) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only the stream owner can update the thumbnail'
+      });
+    }
+
+    // Upload the thumbnail buffer to Azure
+    const thumbnailUrl = await uploadToAzure(thumbnailFile);
+
+    // Update the stream with the new thumbnail URL
+    stream.thumbnailUrl = thumbnailUrl;
+    await stream.save();
+
+    res.json({
+      success: true,
+      message: 'Thumbnail uploaded successfully',
+      thumbnailUrl: stream.thumbnailUrl
+    });
+
+  } catch (error) {
+    console.error('Thumbnail upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload thumbnail',
+      details: error.message
     });
   }
 };
