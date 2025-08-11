@@ -340,7 +340,6 @@ exports.updateProfile = async (req, res) => {
       {
         $set: {
           ...(profileName && { profileName }),
-          ...(emailId !== undefined && { emailId }),
           ...(profileImageUrl && { profileImageUrl }),
         },
       },
