@@ -2,10 +2,15 @@
 compiled_package_info:
   package_name: meme_launchpad
   address_alias_instantiation:
+    admin: 37ab3b95caed2955a21c5a7a336e478c1b8588370d78b6c9021bd5df8f107d52
+    cetus_clmm: 0c7ae833c220aa73a3643a0d508afa4ac5d50d97312ea4584e35f9eb21b9df12
+    fungible_token: c82f775fb1a33f18717d744f7824dad924abbbeaaa7703450706efdf4e67c3d6
+    integer_mate: dcf9989b726020a24d635a4f83b267b19791c4d60663d8a1ebdcfcc5a034247d
     meme_launchpad: "0000000000000000000000000000000000000000000000000000000000000000"
+    move_stl: fc127e3f9318fc874f94e464b1ee06ec01da31ca85479b8ebd3fa068f11a5b7d
     std: "0000000000000000000000000000000000000000000000000000000000000001"
     sui: "0000000000000000000000000000000000000000000000000000000000000002"
-  source_digest: 83581DD7E0CE6FE45DCBC87286A1BBE2CD6879DB65F5A7AC3E59E7C6D6CE5D15
+  source_digest: 24B9E5B6CE1943BC5B7E16F96F89791709B96A27C82AF668B3F07E7360F2B5B0
   build_flags:
     dev_mode: false
     test_mode: false
@@ -69,5 +74,8 @@ compiled_package_info:
           dep_override: true
     force_lock_file: false
 dependencies:
+  - CetusClmm
+  - IntegerMate
+  - MoveSTL
   - MoveStdlib
   - Sui

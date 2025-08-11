@@ -47,7 +47,7 @@ const ELenOutOfRange: u64 = 2;
 /// A helper struct that saves resources on operations. For better
 /// vector performance, it stores reversed bytes of the BCS and
 /// enables use of `vector::pop_back`.
-public struct BCS has copy, drop, store {
+public struct BCS has store, copy, drop {
     bytes: vector<u8>,
 }
 
@@ -75,7 +75,12 @@ public fun into_remainder_bytes(bcs: BCS): vector<u8> {
 /// Read address from the bcs-serialized bytes.
 public fun peel_address(bcs: &mut BCS): address {
     assert!(bcs.bytes.length() >= address::length(), EOutOfRange);
-    address::from_bytes(vector::tabulate!(address::length(), |_| bcs.bytes.pop_back()))
+    let (mut addr_bytes, mut i) = (vector[], 0);
+    while (i < address::length()) {
+        addr_bytes.push_back(bcs.bytes.pop_back());
+        i = i + 1;
+    };
+    address::from_bytes(addr_bytes)
 }
 
 /// Read a `bool` value from bcs-serialized bytes.
@@ -157,7 +162,14 @@ public fun peel_vec_length(bcs: &mut BCS): u64 {
 /// functionality of peeling each value.
 public macro fun peel_vec<$T>($bcs: &mut BCS, $peel: |&mut BCS| -> $T): vector<$T> {
     let bcs = $bcs;
-    vector::tabulate!(bcs.peel_vec_length(), |_| $peel(bcs))
+    let len = bcs.peel_vec_length();
+    let mut i = 0;
+    let mut res = vector[];
+    while (i < len) {
+        res.push_back($peel(bcs));
+        i = i + 1;
+    };
+    res
 }
 
 /// Peel a vector of `address` from serialized bytes.
@@ -205,35 +217,14 @@ public fun peel_vec_u256(bcs: &mut BCS): vector<u256> {
     bcs.peel_vec!(|bcs| bcs.peel_u256())
 }
 
-// === Enum ===
-
-/// Peel enum from serialized bytes, where `$f` takes a `tag` value and returns
-/// the corresponding enum variant. Move enums are limited to 127 variants,
-/// however the tag can be any `u32` value.
-///
-/// Example:
-/// ```rust
-/// let my_enum = match (bcs.peel_enum_tag()) {
-///    0 => Enum::Empty,
-///    1 => Enum::U8(bcs.peel_u8()),
-///    2 => Enum::U16(bcs.peel_u16()),
-///    3 => Enum::Struct { a: bcs.peel_address(), b: bcs.peel_u8() },
-///    _ => abort,
-/// };
-/// ```
-public fun peel_enum_tag(bcs: &mut BCS): u32 {
-    let tag = bcs.peel_vec_length();
-    assert!(tag <= std::u32::max_value!() as u64, EOutOfRange);
-    tag as u32
-}
-
 // === Option<T> ===
 
 /// Peel `Option<$T>` from serialized bytes, where `$peel: |&mut BCS| -> $T` gives the
 /// functionality of peeling the inner value.
 public macro fun peel_option<$T>($bcs: &mut BCS, $peel: |&mut BCS| -> $T): Option<$T> {
     let bcs = $bcs;
-    if (bcs.peel_bool()) option::some($peel(bcs)) else option::none()
+    if (bcs.peel_bool()) option::some($peel(bcs))
+    else option::none()
 }
 
 /// Peel `Option<address>` from serialized bytes.
