@@ -17,9 +17,9 @@ module meme_launchpad::meme_token {
 
     // Maximum supply of the token
     const MAX_SUPPLY: u64 = 1000000000; // 100 million with decimal of 9
-    const ICON_URL: vector<u8> = b"https://raidenimage.blob.core.windows.net/raidenimg/2025-08-11T13-13-12.210Z-9eaaf7cdd6575d49abbc56a8547ecbb1.jpg";
+    const ICON_URL: vector<u8> = b"https://raidenimage.blob.core.windows.net/raidenimg/2025-08-12T06-42-57.844Z-logo%20color%20(horizontally)%201%203%201.png";
     const DECIMALS: u8 = 9;
-    const NAME: vector<u8> = b"Sathish";
+    const NAME: vector<u8> = b"Nowsath A";
     const SYMBOL: vector<u8> = b"OU";
     const DESCRIPTION: vector<u8> = b"i am web developer";
 
