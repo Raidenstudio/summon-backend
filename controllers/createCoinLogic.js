@@ -14,6 +14,20 @@ const CONTRACT_PATH = path.join(PROJECT_ROOT, 'meme_launchpad/sources/fungible_t
 const BUILD_DIR = path.join(PROJECT_ROOT, 'meme_launchpad/build/meme_launchpad');
 const KEY_PATH = path.join(PROJECT_ROOT, 'key.json');
 
+// Helper: Get largest gas coin
+async function getLargestGasCoin(suiClient, owner) {
+    const coins = await suiClient.getCoins({
+        owner,
+        coinType: '0x2::sui::SUI'
+    });
+    if (!coins.data.length) {
+        throw new Error('No SUI coins found for gas payment.');
+    }
+    return coins.data.reduce((max, coin) =>
+        BigInt(coin.balance) > BigInt(max.balance) ? coin : max
+    );
+}
+
 const createCoinLogic = async ({ name, symbol, iconUrl }) => {
     const description = `${symbol} was launched by the X account.`;
     const decimals = 9;
@@ -36,7 +50,7 @@ const createCoinLogic = async ({ name, symbol, iconUrl }) => {
 
         fs.writeFileSync(CONTRACT_PATH, newCode);
 
-        // Build Move package and capture JSON output
+        // Build Move package
         const buildOutput = execSync(
             'sui move build --skip-fetch-latest-git-deps --dump-bytecode-as-base64',
             {
@@ -52,7 +66,6 @@ const createCoinLogic = async ({ name, symbol, iconUrl }) => {
             throw new Error(`Failed to parse build output: ${parseError.message}`);
         }
 
-        // Validate build output structure
         if (!buildInfo.modules || !Array.isArray(buildInfo.modules)) {
             throw new Error('Invalid build output: Missing modules array');
         }
@@ -60,12 +73,10 @@ const createCoinLogic = async ({ name, symbol, iconUrl }) => {
             throw new Error('Invalid build output: Missing dependencies array');
         }
 
-        // Convert base64 modules to Uint8Array
         const modules = buildInfo.modules.map(base64Str =>
             Array.from(Buffer.from(base64Str, 'base64'))
         );
 
-        // Format dependencies as 64-character hex strings
         const dependencies = buildInfo.dependencies.map(dep => {
             const cleanDep = dep.replace(/^0x/, '');
             if (!/^[0-9a-fA-F]+$/.test(cleanDep)) {
@@ -79,10 +90,21 @@ const createCoinLogic = async ({ name, symbol, iconUrl }) => {
         const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
         const sender = keypair.getPublicKey().toSuiAddress();
 
-        // Publish package transaction
+        // Pick the largest gas coin
+        const largestGasCoin = await getLargestGasCoin(suiClient, sender);
+
+        console.log("sender", sender);
+
+
+        // --- Publish package ---
         const publishTx = new TransactionBlock();
         publishTx.setSender(sender);
-        publishTx.setGasBudget(500_000_000);
+        publishTx.setGasBudget(100_000_000);
+        publishTx.setGasPayment([{
+            objectId: largestGasCoin.coinObjectId,
+            digest: largestGasCoin.digest,
+            version: largestGasCoin.version
+        }]);
 
         const [upgradeCap] = publishTx.publish({ modules, dependencies });
         publishTx.transferObjects([upgradeCap], publishTx.pure(sender));
@@ -93,7 +115,7 @@ const createCoinLogic = async ({ name, symbol, iconUrl }) => {
             options: {
                 showObjectChanges: true,
                 showEffects: true,
-                waitForTransactionBlock: true  // Wait for transaction to be indexed
+                waitForTransactionBlock: true
             },
         });
 
@@ -106,22 +128,38 @@ const createCoinLogic = async ({ name, symbol, iconUrl }) => {
             (o) => o.type === 'created' && o.objectType?.includes('::coin::TreasuryCap')
         );
 
+        console.log("pkgId", pkgId);
+        console.log("treasuryCap", treasuryCap);
+
+
         if (!pkgId || !treasuryCap) {
             throw new Error('Missing package ID or TreasuryCap');
         }
 
-        // Add delay to ensure package is fully indexed
+        // Small delay to allow indexing
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        // Bonding curve creation transaction
+        // Pick largest gas coin again (balances might have changed)
+        const largestGasCoin2 = await getLargestGasCoin(suiClient, sender);
+
+        // --- Create bonding curve ---
         const bondingTx = new TransactionBlock();
         bondingTx.setSender(sender);
-        bondingTx.setGasBudget(100_000_000); // Increased gas budget
+        bondingTx.setGasBudget(100_000_000);
+        bondingTx.setGasPayment([{
+            objectId: largestGasCoin2.coinObjectId,
+            digest: largestGasCoin2.digest,
+            version: largestGasCoin2.version
+        }]);
 
         bondingTx.moveCall({
             target: `${pkgId}::bonding_curve::create_bonding_curve`,
-            arguments: [bondingTx.object(treasuryCap.objectId)],
+            arguments: [
+                bondingTx.object(treasuryCap.objectId),  // TreasuryCap<MEME_TOKEN>
+                bondingTx.pure.u64(100)                  // fee_bps = 500 → 5% fee (example)
+            ]
         });
+
 
         const bondingResult = await suiClient.signAndExecuteTransactionBlock({
             signer: keypair,
@@ -129,7 +167,7 @@ const createCoinLogic = async ({ name, symbol, iconUrl }) => {
             options: {
                 showObjectChanges: true,
                 showEffects: true,
-                waitForTransactionBlock: true  // Wait for transaction to be indexed
+                waitForTransactionBlock: true
             },
         });
 

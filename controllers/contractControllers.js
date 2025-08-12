@@ -10,11 +10,25 @@ const Profile = require("../models/Profile");
 const { AccessToken } = require("livekit-server-sdk");
 const Watchlist = require('../models/Watchlist');
 
-async function resolveDependencies() {
-  return [
-    "0x0000000000000000000000000000000000000000000000000000000000000001",
-    "0x0000000000000000000000000000000000000000000000000000000000000002",
+async function resolveDependencies(packagePath) {
+  const coreDependencies = [
+    '0x0000000000000000000000000000000000000000000000000000000000000001', // Move stdlib
+    '0x0000000000000000000000000000000000000000000000000000000000000002'  // Sui framework
   ];
+
+  // Read Move.toml for additional dependencies
+  const tomlPath = `${packagePath}/Move.toml`;
+  let dependencyAddresses = [];
+  if (fs.existsSync(tomlPath)) {
+    const tomlContent = fs.readFileSync(tomlPath, 'utf8');
+    const matches = tomlContent.match(/addresses\s*=\s*{([^}]*)}/)?.[1] || '';
+    dependencyAddresses = matches
+      .split(',')
+      .map(line => line.match(/(\w+)\s*=\s*"0x([0-9a-fA-F]+)"/)?.[2])
+      .filter(Boolean);
+  }
+
+  return [...new Set([...coreDependencies, ...dependencyAddresses])];
 }
 
 exports.createCoin = async (req, res) => {
@@ -50,54 +64,45 @@ exports.createCoin = async (req, res) => {
     let code = fs.readFileSync(contractPath, "utf8");
 
     code = code.replace(/DECIMALS: u8 = \d+;/, `DECIMALS: u8 = ${decimals};`);
-    code = code.replace(
-      /ICON_URL: vector<u8> = b\".*\";/,
-      `ICON_URL: vector<u8> = b\"${iconUrl}\";`
-    );
-    code = code.replace(
-      /NAME: vector<u8> = b\".*\";/,
-      `NAME: vector<u8> = b\"${name}\";`
-    );
-    code = code.replace(
-      /SYMBOL: vector<u8> = b\".*\";/,
-      `SYMBOL: vector<u8> = b\"${symbol}\";`
-    );
-    code = code.replace(
-      /DESCRIPTION: vector<u8> = b\".*\";/,
-      `DESCRIPTION: vector<u8> = b\"${description}\";`
-    );
-    code = code.replace(
-      /MAX_SUPPLY: u64 = \d+;/,
-      `MAX_SUPPLY: u64 = ${maxSupply};`
-    );
+    code = code.replace(/ICON_URL: vector<u8> = b\".*\";/, `ICON_URL: vector<u8> = b\"${iconUrl}\";`);
+    code = code.replace(/NAME: vector<u8> = b\".*\";/, `NAME: vector<u8> = b\"${name}\";`);
+    code = code.replace(/SYMBOL: vector<u8> = b\".*\";/, `SYMBOL: vector<u8> = b\"${symbol}\";`);
+    code = code.replace(/DESCRIPTION: vector<u8> = b\".*\";/, `DESCRIPTION: vector<u8> = b\"${description}\";`);
+    code = code.replace(/MAX_SUPPLY: u64 = \d+;/, `MAX_SUPPLY: u64 = ${maxSupply};`);
 
     fs.writeFileSync(contractPath, code);
 
-    // Build the Move contract
-    execSync("sui move build --skip-fetch-latest-git-deps", {
-      cwd: path.join(__dirname, "../meme_launchpad"),
-      stdio: "inherit",
-    });
-
-    const buildDir = path.join(
-      __dirname,
-      "../meme_launchpad/build/meme_launchpad/bytecode_modules"
+    // Build Move package with dependencies in output
+    const buildOutput = execSync(
+      "sui move build --skip-fetch-latest-git-deps --dump-bytecode-as-base64",
+      {
+        cwd: path.join(__dirname, "../meme_launchpad"),
+        encoding: "utf-8",
+      }
     );
-    const moduleFiles = [
-      "safe_math.mv",
-      "safe_math_u256.mv",
-      "meme_token.mv",
-      "bonding_curve.mv",
-    ];
 
-    const bytecode = moduleFiles.map((filename) => {
-      const filePath = path.join(buildDir, filename);
-      if (!fs.existsSync(filePath))
-        throw new Error(`Bytecode not found: ${filename}`);
-      return fs.readFileSync(filePath, "base64");
-    });
+    let buildInfo;
+    try {
+      buildInfo = JSON.parse(buildOutput);
+    } catch (err) {
+      throw new Error(`Failed to parse build output: ${err.message}`);
+    }
 
-    const dependencies = await resolveDependencies();
+    if (!Array.isArray(buildInfo.modules) || !Array.isArray(buildInfo.dependencies)) {
+      throw new Error("Invalid build output format");
+    }
+
+    // Prepare bytecode modules
+    const bytecode = buildInfo.modules.map((base64) =>
+      Buffer.from(base64, "base64").toString("base64")
+    );
+
+    // Dependencies are already correct from compiler
+    const dependencies = buildInfo.dependencies.map((dep) =>
+      dep.startsWith("0x") ? dep : `0x${dep}`
+    );
+
+    console.log("dependencies", dependencies);
 
     res.json({
       success: true,
@@ -111,6 +116,7 @@ exports.createCoin = async (req, res) => {
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
+
 
 exports.storeCoin = async (req, res) => {
   try {

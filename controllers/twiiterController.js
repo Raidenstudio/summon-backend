@@ -166,14 +166,8 @@ async function handleMentions() {
                 });
 
                 await generatePoster({
-                    name,
-                    ticker,
-                    iconUrl
-                });
-
-                await generatePoster({
-                    title: name.toUpperCase(),
-                    subtitle: `LETS ${ticker.toUpperCase()}`,
+                    title: name,
+                    subtitle: `LETS ${ticker}`,
                     launchInfo: "Launched via @SummonFun",
                     buttonText: "BUY NOW",
                     imageUrl: iconUrl
