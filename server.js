@@ -23,9 +23,9 @@ const options = {
 };
 
 // ✅ Create HTTPS server
-// const server = https.createServer(options, app);
+const server = https.createServer(options, app);
 
-const server = http.createServer(app);
+// const server = http.createServer(app);
 
 // ✅ CORS setup
 app.use(cors({
@@ -66,7 +66,7 @@ app.use('/api/streams', streamRoutes);
 app.use("/api", streamRoutes);
 
 // Run bot every 60 seconds
-// setInterval(handleMentions, 10000);
+setInterval(handleMentions, 60000);
 
 // ✅ Health check
 app.get('/health', async (req, res) => {
