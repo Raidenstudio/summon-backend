@@ -52,7 +52,7 @@ exports.createCoin = async (req, res) => {
       iconUrl = await uploadToAzure(req.file);
     }
 
-    if (!name || !symbol || !description || !iconUrl || !walletAddress) {
+    if (!name || !symbol || !iconUrl || !walletAddress) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
