@@ -474,3 +474,47 @@ exports.getWatchlist = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+
+// GET /api/market-cap?coinId=...
+exports.getMarketCap = async (req, res) => {
+  try {
+    const { coinId } = req.query;
+
+    if (!coinId) return res.status(400).json({ error: "Missing coinId" });
+
+    const coin = await Coin.findById(coinId);
+    if (!coin) return res.status(404).json({ error: "Coin not found" });
+
+    res.json({ success: true, data: { mcap: coin.mcap } });
+  } catch (err) {
+    console.error("Error getting market cap:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
+exports.updateMarketCap = async (req, res) => {
+  try {
+    const { coinId, mcap } = req.body;
+
+    if (!coinId || mcap === undefined) {
+      return res.status(400).json({ error: "Missing coinId or mcap" });
+    }
+
+    const updatedCoin = await Coin.findByIdAndUpdate(
+      coinId,
+      { mcap },
+      { new: true }
+    );
+
+    if (!updatedCoin) {
+      return res.status(404).json({ error: "Coin not found" });
+    }
+
+    res.json({ success: true, data: updatedCoin });
+  } catch (err) {
+    console.error("Error updating market cap:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};

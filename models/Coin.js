@@ -15,7 +15,7 @@ const coinSchema = new mongoose.Schema(
     bondingCurve: String,
     txDigest: String,
     iconUrl: String,
-    mcap: String,
+    mcap: { type: Number, default: 0 },
     volume24USD: String,
     totalVolume: String,
     mcapPercentage: String,
