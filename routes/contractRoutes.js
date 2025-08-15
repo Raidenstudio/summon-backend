@@ -20,8 +20,8 @@ router.get("/get-watchlist", contractController.getWatchlist);
 router.post('/remove-from-watchlist', contractController.removeFromWatchlist);
 
 // marketCap
-router.get('/market-cap', contractController.getMarketCap);
-router.put('/update-market-cap', contractController.updateMarketCap);
+router.get("/get-market-cap/:id", contractController.getMarketCap);
+router.post('/update-market-cap', contractController.updateMarketCap);
 
 
 module.exports = router;

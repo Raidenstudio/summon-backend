@@ -23,9 +23,9 @@ const options = {
 };
 
 // ✅ Create HTTPS server
-// const server = https.createServer(options, app);
+const server = https.createServer(options, app);
 
-const server = http.createServer(app);
+// const server = http.createServer(app);
 
 // ✅ CORS setup
 app.use(cors({

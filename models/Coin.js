@@ -15,10 +15,26 @@ const coinSchema = new mongoose.Schema(
     bondingCurve: String,
     txDigest: String,
     iconUrl: String,
-    mcap: { type: Number, default: 0 },
+    mcap: Number,
+    ATH: { type: Number, default: 0 },
+
+    // Market Cap OHLC history
+    marketCapDetails: [
+      {
+        time: { type: Number, required: true },
+        open: { type: Number, required: true },
+        high: { type: Number, required: true },
+        low: { type: Number, required: true },
+        close: { type: Number, required: true }
+      }
+    ],
+
+    // 24h change value in USD
+    mcapChangeValue: { type: Number, default: 0 },  // <-- Added this
+    mcapPercentage: String,
+
     volume24USD: String,
     totalVolume: String,
-    mcapPercentage: String,
     volumePercentage: String,
     totalVolumePercentage: String,
   },

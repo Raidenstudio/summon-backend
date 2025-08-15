@@ -459,14 +459,9 @@ exports.getWatchlist = async (req, res) => {
       .populate('coins')
       .lean();
 
-    console.log("watchlist.coins", watchlist);
-
     if (!watchlist) {
       return res.json({ success: true, coins: [] });
     }
-
-    console.log("watchlist.coins", watchlist);
-
 
     res.json({ success: true, coins: watchlist.coins });
   } catch (error) {
@@ -494,27 +489,101 @@ exports.getMarketCap = async (req, res) => {
 };
 
 
+// GET OHLC data
+exports.getMarketCap = async (req, res) => {
+  try {
+    const coin = await Coin.findById(req.params.id);
+    if (!coin) {
+      return res.status(404).json({ success: false, error: "Coin not found" });
+    }
+    res.json({ success: true, data: coin });
+  } catch (err) {
+    console.error("Error fetching market cap:", err);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
 exports.updateMarketCap = async (req, res) => {
   try {
-    const { coinId, mcap } = req.body;
-
-    if (!coinId || mcap === undefined) {
-      return res.status(400).json({ error: "Missing coinId or mcap" });
+    const { coinId, ohlc } = req.body;
+    if (!coinId || !ohlc) {
+      return res.status(400).json({ success: false, error: "Missing coinId or ohlc" });
     }
 
-    const updatedCoin = await Coin.findByIdAndUpdate(
+    const requiredFields = ["time", "open", "high", "low", "close"];
+    for (const field of requiredFields) {
+      if (ohlc[field] === undefined) {
+        return res.status(400).json({ success: false, error: `Missing field: ${field}` });
+      }
+    }
+
+    const coin = await Coin.findById(coinId);
+    if (!coin) {
+      return res.status(404).json({ success: false, error: "Coin not found" });
+    }
+
+    const lastBarIndex = coin.marketCapDetails.length - 1;
+    const lastBar = coin.marketCapDetails[lastBarIndex];
+    let newHigh;
+
+    if (lastBar && lastBar.time === ohlc.time) {
+      newHigh = Math.max(lastBar.high, ohlc.high);
+      coin.marketCapDetails[lastBarIndex] = {
+        ...lastBar.toObject(),
+        high: newHigh,
+        low: Math.min(lastBar.low, ohlc.low),
+        close: ohlc.close
+      };
+    } else {
+      newHigh = ohlc.high;
+      coin.marketCapDetails.push(ohlc);
+    }
+
+    // ATH update
+    if (!coin.ATH || newHigh > coin.ATH) {
+      coin.ATH = newHigh;
+    }
+
+    // Current mcap update
+    coin.mcap = Number(ohlc.close);
+
+    // --- 24h old data calculation ---
+    const currentTime = ohlc.time; // Assuming in seconds
+    const dayAgoTimestamp = currentTime - 24 * 60 * 60;
+
+    const data24hAgo = [...coin.marketCapDetails]
+      .reverse()
+      .find(item => item.time <= dayAgoTimestamp);
+
+    if (data24hAgo) {
+      coin.mcap24hAgo = data24hAgo.close;
+    }
+
+    // --- Change calculation ---
+    let changeValue = 0;
+    let changePercent = 0;
+    if (coin.mcap24hAgo > 0) {
+      changeValue = coin.mcap - coin.mcap24hAgo;
+      changePercent = (changeValue / coin.mcap24hAgo) * 100;
+    }
+
+    coin.mcapChangeValue = changeValue.toFixed(2);
+    coin.mcapPercentage = changePercent.toFixed(2) + "%";
+
+    await coin.save();
+
+    io.emit("marketcap_update", {
       coinId,
-      { mcap },
-      { new: true }
-    );
+      ohlc,
+      mcap: coin.mcap,
+      mcapChangeValue: coin.mcapChangeValue,
+      mcapPercentage: coin.mcapPercentage,
+      mcap24hAgo: coin.mcap24hAgo
+    });
 
-    if (!updatedCoin) {
-      return res.status(404).json({ error: "Coin not found" });
-    }
-
-    res.json({ success: true, data: updatedCoin });
+    res.json({ success: true, data: coin });
   } catch (err) {
     console.error("Error updating market cap:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ success: false, error: "Server error" });
   }
 };
